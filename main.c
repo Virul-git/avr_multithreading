@@ -1,12 +1,11 @@
-#define F_CPU 8000000UL
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include <util/delay.h>
 
 int ToRunTask=0;
 
-void Task0(void);
-void Task1(void);
+int Task0(void);
+int Task1(void);
 
 int TaskReady;
 int TaskRunning;
@@ -43,7 +42,7 @@ struct Task
 	int TaskId;
 	int TaskStatus;
 	
-}TaskL[2];
+}TaskL[2],TRL[2];
 
 void init_task(char *taskname, int taskpriority, int taskid, int taskstatus)
 {
@@ -113,7 +112,7 @@ int main(void)
 	sei(); 			// global interrupt elabled
 	
 	//////////////////  set for timer1 overflow interrupt
-	TCCR1B =0x01;
+	TCCR1B =0x02;
 	TIMSK = 0x07;
 	
 	
@@ -149,8 +148,9 @@ ISR(TIMER1_OVF_vect)
 }
 
 
-void Task0(void)
+int Task0(void)
 {	
+	cli();
 	int count;
 	TaskReady = 0;
 	TaskRunning = 1;
@@ -162,14 +162,22 @@ void Task0(void)
 	{
 		led_blink(count);
 		
+		sei();
 		TaskReady = 1;
 		_delay_ms(100);
 		TaskReady = 0;
+		cli();
 		
-		if(ToRunTask != 0)
+		if(ToRunTask == 1)
 		{
 			//Task_dump_var(count,0);
+			TaskRunning = 0;
+			PORTB = 0x00;
+			TaskL[0].TaskStatus=0;
+			TaskReady = 1;
+			return 0;
 			break;
+			
 		};
 	};
 	TaskRunning = 0;
@@ -178,8 +186,9 @@ void Task0(void)
 	TaskReady = 1;
 }
 
-void Task1(void)
+int Task1(void)
 {	
+	cli();
 	int count;
 	TaskReady = 0;
 	TaskRunning = 1;
@@ -191,16 +200,24 @@ void Task1(void)
 	{
 		led_blink(count);
 		
+		sei();
 		TaskReady = 1;
 		_delay_ms(100);
 		TaskReady = 0;
+		cli();
 		
-		if(ToRunTask != 1)
+		if(ToRunTask == 0)
 		{
+			TaskRunning = 0;
+			PORTB = 0x00;
+			TaskL[1].TaskStatus =0;
+			TaskReady = 1;
+			return 0;
 			//Task_dump_var(count,1);
 			break;
 		};
 	};
+	
 	TaskRunning = 0;
 	PORTB = 0x00;
 	TaskL[1].TaskStatus =0;
